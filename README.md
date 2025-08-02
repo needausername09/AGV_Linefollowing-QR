@@ -1,2 +1,2 @@
-# Supporter: Trent Hole Thuc Mei 
+# Supporter: Trent Hole Thuc Mine 
 # Member: 12345
