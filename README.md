@@ -1,2 +1,2 @@
-# Supporter: Trent Hole Thuc Mine 
+# Supporter: Trent Hole Tough My
 # Member: 12345
