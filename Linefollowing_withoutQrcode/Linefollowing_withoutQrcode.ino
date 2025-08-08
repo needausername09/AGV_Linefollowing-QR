@@ -1,3 +1,5 @@
+String chidan = "LSR";    // L = Left, R = Right, S = Straight
+int chidanIndex = 0;
 #define NUM_SENSORS 5
 
 // IR sensor pins
@@ -13,27 +15,25 @@ const int IN4 = 14;  // Right motor backward
 const int L255 = 255, L235 = 235, L215 = 215, L175 = 175, L155 = 155;
 const int R255 = 255, R235 = 235, R215 = 215, R175 = 175, R155 = 155;
 
-// Debounce settings
+// Debounce
 int lastSensorRead[NUM_SENSORS] = {1, 1, 1, 1, 1};
 unsigned long lastDebounceTime = 0;
-unsigned long debounceDelay = 10; // ms
+unsigned long debounceDelay = 10;
 
 bool hasStarted = false;
 
-// Lost line handling
-String lastDirection = "STOP";  // "LEFT", "RIGHT", "STRAIGHT", "STOP"
+// Lost line
+String lastDirection = "STOP";
 unsigned long lostLineStartTime = 0;
 const unsigned long lostLineLimit = 500; // ms
 
 void setup() {
   Serial.begin(115200);
 
-  // Attach sensor pins
   for (int i = 0; i < NUM_SENSORS; i++) {
     pinMode(sensors[i], INPUT);
   }
 
-  // Attach motor pins with LEDC
   ledcAttach(IN1, 5000, 8);
   ledcAttach(IN2, 5000, 8);
   ledcAttach(IN3, 5000, 8);
@@ -48,19 +48,32 @@ void stopMotors() {
 }
 
 void moveMotors(int leftSpeed, int rightSpeed) {
-  // Forward movement
   analogWrite(IN1, leftSpeed);
   analogWrite(IN2, 0);
-
   analogWrite(IN3, rightSpeed);
   analogWrite(IN4, 0);
+}
+
+void turnLeft() {
+  moveMotors(L175, R255); // quay trái mạnh
+  delay(400); // thời gian tùy chỉnh theo tốc độ robot
+}
+
+void turnRight() {
+  moveMotors(L255, R175); // quay phải mạnh
+  delay(400);
+}
+
+void goStraight() {
+  moveMotors(L255, R255);
+  delay(400);
 }
 
 void loop() {
   int sensorValues[NUM_SENSORS];
   bool blackDetected = false;
 
-  // Read sensors with debounce
+  // Debounce đọc cảm biến
   if ((millis() - lastDebounceTime) > debounceDelay) {
     for (int i = 0; i < NUM_SENSORS; i++) {
       int reading = digitalRead(sensors[i]);
@@ -73,52 +86,69 @@ void loop() {
     }
   }
 
-  // Wait for first black to start
+  // Chờ gặp line đen để bắt đầu
   if (!hasStarted && blackDetected) {
     hasStarted = true;
   }
-
   if (!hasStarted) {
     stopMotors();
     return;
   }
 
-  // Check for intersection (all black)
+  // Intersection: tất cả đều đen
   if (sensorValues[0] == 0 && sensorValues[1] == 0 &&
       sensorValues[2] == 0 && sensorValues[3] == 0 &&
       sensorValues[4] == 0) {
     stopMotors();
+    delay(100); // dừng ngắn để ổn định
+
+    if (chidanIndex < chidan.length()) {
+      char cmd = chidan[chidanIndex];
+      chidanIndex++;
+
+      if (cmd == 'L') {
+        Serial.println("Turn LEFT");
+        turnLeft();
+      } else if (cmd == 'R') {
+        Serial.println("Turn RIGHT");
+        turnRight();
+      } else if (cmd == 'S') {
+        Serial.println("Go STRAIGHT");
+        goStraight();
+      }
+    } else {
+      // Hết chỉ dẫn → dừng hẳn
+      Serial.println("End of instructions. STOP.");
+      stopMotors();
+      while (true) {} // đứng im
+    }
     return;
   }
 
-  // Check lost line (all white)
+  // Lost line: tất cả trắng
   if (sensorValues[0] == 1 && sensorValues[1] == 1 &&
       sensorValues[2] == 1 && sensorValues[3] == 1 &&
       sensorValues[4] == 1) {
-    if (lostLineStartTime == 0) {
-      lostLineStartTime = millis(); // bắt đầu mất line
-    }
-
+    if (lostLineStartTime == 0) lostLineStartTime = millis();
     if (millis() - lostLineStartTime <= lostLineLimit) {
-      // Tiếp tục theo hướng cũ
       if (lastDirection == "LEFT") {
-        moveMotors(L175, R255); // quay trái nhẹ
+        moveMotors(L175, R255);
       } else if (lastDirection == "RIGHT") {
-        moveMotors(L255, R175); // quay phải nhẹ
+        moveMotors(L255, R175);
       } else if (lastDirection == "STRAIGHT") {
-        moveMotors(L255, R255); // đi thẳng
+        moveMotors(L255, R255);
       } else {
         stopMotors();
       }
     } else {
-      stopMotors(); // quá giới hạn
+      stopMotors();
     }
     return;
   } else {
-    lostLineStartTime = 0; // reset khi tìm lại line
+    lostLineStartTime = 0;
   }
 
-  // Logic mapping + lưu hướng
+  // Line-follow mapping
   if (sensorValues[0] == 0 && sensorValues[1] == 1) {
     moveMotors(L155, R255);
     lastDirection = "RIGHT";
