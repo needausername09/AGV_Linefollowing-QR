@@ -1,5 +1,5 @@
 #define NUM_SENSORS 5
-String chidan = "";         
+String Gchidan = "";         
 int chidanIndex = 0;        
 String qrPayload = "";  
 
@@ -66,8 +66,8 @@ void preprocessImage(uint8_t *buf, int width, int height) {
   const int IN4 = 14; // Right motor backward
 
   // Speeds
-  const int L255 = 255, L235 = 235, L215 = 215, L195 = 195, L175 = 175;
-  const int R255 = 255, R235 = 235, R215 = 215, R195 = 195, R175 = 175;
+  const int L255 = 255, L235 = 235, L215 = 215, L175 = 155, L155 = 15;
+  const int R255 = 255, R235 = 235, R215 = 215, R175 = 175, R155 = 155;
 
   // Debounce settings
   int lastSensorRead[NUM_SENSORS] = {1, 1, 1, 1, 1};
@@ -161,7 +161,7 @@ void setup() {
 void QRCodeReader(void *pvParameters) {
   Serial.println("QRCodeReader started on core ");
   Serial.println(xPortGetCoreID());
-  while (chidan == "") {
+  while (Gchidan == "") {
     fb = esp_camera_fb_get();
     image = quirc_begin(q, NULL, NULL);
     preprocessImage(fb->buf, fb->width, fb->height);
@@ -311,9 +311,9 @@ void loop() {
 
   // Logic mapping
   if (sensorValues[0] == 0 && sensorValues[1] == 1) {
-    lastLeftSpeed = L175; lastRightSpeed = R255;
+    lastLeftSpeed = L155; lastRightSpeed = R255;
   } else if (sensorValues[0] == 0 && sensorValues[1] == 0) {
-    lastLeftSpeed = L195; lastRightSpeed = R255;
+    lastLeftSpeed = L175; lastRightSpeed = R255;
   } else if (sensorValues[1] == 0 && sensorValues[2] == 1) {
     lastLeftSpeed = L215; lastRightSpeed = R255;
   } else if (sensorValues[1] == 0 && sensorValues[2] == 0) {
@@ -325,9 +325,9 @@ void loop() {
   } else if (sensorValues[3] == 0 && sensorValues[4] == 1) {
     lastLeftSpeed = L255; lastRightSpeed = R215;
   } else if (sensorValues[3] == 0 && sensorValues[4] == 0) {
-    lastLeftSpeed = L255; lastRightSpeed = R195;
-  } else if (sensorValues[4] == 0 && sensorValues[3] == 1) {
     lastLeftSpeed = L255; lastRightSpeed = R175;
+  } else if (sensorValues[4] == 0 && sensorValues[3] == 1) {
+    lastLeftSpeed = L255; lastRightSpeed = R155;
   } else {
     stopMotors();  // Fail-safe
     return;
